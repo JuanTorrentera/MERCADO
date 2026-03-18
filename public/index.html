@@ -2,48 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Luxem Energía</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Luxem Market Analytics</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
-    <div class="dashboard">
-        <aside class="sidebar">
-            <h2 style="color: #38bdf8; font-size: 1.1rem; margin-bottom: 30px;">LUXEM ANALYTICS</h2>
-            <nav>
-                <button class="menu-btn active" data-modulo="tarifas">Tarifas CFE</button>
-                <button class="menu-btn" data-modulo="reservas">Reservas</button>
-                <button class="menu-btn" data-modulo="mda">Precios MDA</button>
-                <button class="menu-btn" data-modulo="mtr">Precios MTR</button>
-            </nav>
-        </aside>
+    <header>
+        <h1 style="color: #00d4ff;">LUXEM ANALYTICS</h1>
+        <nav>
+            <button class="tab-btn active" onclick="cambiarModulo('tarifas')">Tarifas CFE</button>
+            <button class="tab-btn" onclick="cambiarModulo('reservas')">Reservas</button>
+            <button class="tab-btn" onclick="cambiarModulo('mda')">Precios MDA</button>
+            <button class="tab-btn" onclick="cambiarModulo('mtr')">Precios MTR</button>
+        </nav>
+    </header>
 
-        <main class="content">
-            <header>
-                <h1 style="color:white; margin-bottom: 20px;">Mercado: <span id="titulo-modulo" style="color:#38bdf8">Tarifas CFE</span></h1>
-                <div class="filtros-container" id="contenedor-filtros"></div>
-                <button id="btn-graficar" class="btn-primary" style="margin-top:15px">EJECUTAR ANÁLISIS</button>
-            </header>
+    <main>
+        <h2 id="modulo-titulo">Tarifas CFE</h2>
+        <div id="filtros-container" class="filtros-grid">
+            </div>
+        <button class="btn-ejecutar" onclick="ejecutar()">EJECUTAR ANÁLISIS</button>
 
-            <section class="kpi-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 25px 0;">
-                <div class="kpi-card"><span>PROMEDIO</span><h3 id="kpi-avg">-</h3></div>
-                <div class="kpi-card"><span>MÁXIMO</span><h3 id="kpi-max">-</h3></div>
-                <div class="kpi-card"><span>MÍNIMO</span><h3 id="kpi-min">-</h3></div>
-                <div class="kpi-card"><span>REGISTROS</span><h3 id="kpi-count">-</h3></div>
-            </section>
+        <div class="stats-grid">
+            <div class="stat-card"><h3>PROMEDIO</h3><p id="stat-promedio">-</p></div>
+            <div class="stat-card"><h3>MÁXIMO</h3><p id="stat-maximo">-</p></div>
+            <div class="stat-card"><h3>MÍNIMO</h3><p id="stat-minimo">-</p></div>
+            <div class="stat-card"><h3>REGISTROS</h3><p id="stat-registros">-</p></div>
+        </div>
 
-            <section class="charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 30px;">
-                <div class="chart-card" style="background: #1e293b; padding: 25px; border-radius: 15px; height: 450px;">
-                    <h3 style="color:#94a3b8; font-size: 0.9rem; margin-bottom: 20px;">EVOLUCIÓN TEMPORAL POR COMPONENTE</h3>
-                    <canvas id="graficaMensual"></canvas>
-                </div>
-                <div class="chart-card" style="background: #1e293b; padding: 25px; border-radius: 15px; height: 400px;">
-                    <h3 style="color:#94a3b8; font-size: 0.9rem; margin-bottom: 20px;">COMPARATIVA DE COMPONENTES (PROMEDIO)</h3>
-                    <canvas id="graficaPromedio"></canvas>
-                </div>
-            </section>
-        </main>
-    </div>
-    <script src="js/main.js"></script>
+        <div id="grafica" class="chart-container">
+            <p style="text-align:center; padding-top:100px;">Selecciona filtros y ejecuta para ver la evolución...</p>
+        </div>
+    </main>
+    <script src="/js/main.js"></script>
 </body>
 </html>

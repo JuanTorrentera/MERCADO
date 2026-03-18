@@ -29,6 +29,7 @@ def cargar_excel(modulo: str):
         sheet = "MDA" if modulo == "mda" else ("MTR" if modulo == "mtr" else 0)
         df = pd.read_excel(ruta, sheet_name=sheet)
         df.columns = df.columns.str.strip()
+        
         col_fecha = next((c for c in df.columns if str(c).upper() in ['FECHA', 'FECHAOPERACION']), None)
         if col_fecha:
             df[col_fecha] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
@@ -36,6 +37,10 @@ def cargar_excel(modulo: str):
             df['Mes'] = df[col_fecha].dt.month.fillna(0).astype(int).astype(str)
             df['Día'] = df[col_fecha].dt.day.fillna(0).astype(int).astype(str)
             df = df[df['Año'] != '0']
+        
+        renames = {'DIVISION': 'Division', 'TARIFA': 'Tarifa', 'CONCEPTO': 'Concepto', 
+                   'ZONARESERVA': 'ZonaReserva', 'ZONACARGA': 'ZonaCarga', 'HORA': 'HoraOperacion'}
+        df = df.rename(columns={k: v for k, v in renames.items() if k in df.columns})
         return df
     except: return None
 
@@ -44,7 +49,8 @@ def get_filtros(modulo: str):
     df = cargar_excel(modulo)
     if df is None: raise HTTPException(status_code=404)
     cols = ["Año", "Tarifa", "Division", "Concepto", "Zona", "Sistema", "ZonaReserva", "ZonaCarga", "Mes", "Día"]
-    return {c: sorted([v.replace('.0','') for v in df[c].dropna().astype(str).unique()]) for c in df.columns if c in cols}
+    return {c: sorted([v.replace('.0','') for v in df[c].dropna().astype(str).unique()]) 
+            for c in df.columns if c in cols}
 
 @app.get("/api/datos")
 def get_datos(request: Request):

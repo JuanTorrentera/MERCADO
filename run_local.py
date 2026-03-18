@@ -1,5 +1,5 @@
 import uvicorn
-from api.index import app
+from apia.index import app
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
