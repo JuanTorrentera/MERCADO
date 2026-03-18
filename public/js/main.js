@@ -57,21 +57,26 @@ function actualizarDashboard(data) {
     verificarPlotly();
     if(!data || data.length === 0) return alert("No hay datos para esta selección");
     
-    // MAGIA: Buscar qué columna tiene los valores (Ignora las fechas y nombres)
+    // Las columnas que son texto o fechas y NO deben sumarse
     const colsIgnorar = ['Año', 'Mes', 'Día', 'Hora', 'HoraOperacion', 'Fecha', 'FechaOperacion', 'Tarifa', 'Division', 'Concepto', 'Zona', 'Sistema', 'ZonaReserva', 'ZonaCarga'];
-    let columnaValor = null;
     
-    for (let key in data[0]) {
-        if (!colsIgnorar.includes(key) && typeof data[0][key] === 'number') {
-            columnaValor = key;
-            break; // Encontró la columna de dinero/precios
+    // Función inteligente para calcular el valor real de la fila
+    const getVal = (d) => {
+        // Si el archivo ya trae un Precio o Total definido (como en MDA/MTR), úsalo
+        if (d['Total'] !== undefined && d['Total'] !== 0) return parseFloat(d['Total']);
+        if (d['Precio'] !== undefined && d['Precio'] !== 0) return parseFloat(d['Precio']);
+        if (d['PML'] !== undefined && d['PML'] !== 0) return parseFloat(d['PML']);
+        
+        // Si no (como en Tarifas CFE), suma todos los componentes
+        let sumaFila = 0;
+        for (let key in d) {
+            if (!colsIgnorar.includes(key) && typeof d[key] === 'number') {
+                sumaFila += d[key];
+            }
         }
-    }
-    
-    // Fallback por si acaso
-    if (!columnaValor) columnaValor = ['Total', 'Precio', 'Cargo', 'Importe', 'Monto', 'PML'].find(c => data[0][c] !== undefined);
+        return sumaFila;
+    };
 
-    const getVal = (d) => columnaValor ? parseFloat(d[columnaValor]) : 0;
     const valores = data.map(getVal);
     
     document.getElementById('stat-promedio').innerText = (valores.reduce((a,b) => a+b, 0) / valores.length).toFixed(2);
@@ -84,7 +89,6 @@ function actualizarDashboard(data) {
         const label = d.Concepto || d.ZonaReserva || d.Sistema || d.Tarifa || 'General';
         const fechaVal = d.Fecha || d.FechaOperacion || 'Punto';
         
-        // Si hay pocos datos, usa barras para que se vea bien
         if(!traces[label]) traces[label] = {x:[], y:[], name: label, type: data.length < 10 ? 'bar' : 'scatter', mode: 'lines+markers'};
         traces[label].x.push(fechaVal);
         traces[label].y.push(getVal(d));
@@ -94,7 +98,7 @@ function actualizarDashboard(data) {
         paper_bgcolor: '#1e293b', plot_bgcolor: '#1e293b',
         font: {color: '#fff'}, margin: {t:30, r:30, l:50, b:80},
         xaxis: { gridcolor: '#334155', tickangle: -45 },
-        yaxis: { title: columnaValor || 'Valor', gridcolor: '#334155' }
+        yaxis: { title: 'Valor ($)', gridcolor: '#334155' }
     });
 }
 
