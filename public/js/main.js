@@ -23,7 +23,8 @@ async function cargarFiltros() {
         const container = document.getElementById('filtros-container');
         container.innerHTML = '';
         
-        const orden = ["Año", "Mes", "Día", "Tarifa", "Division", "ZonaReserva", "ZonaCarga", "Sistema", "Concepto"];
+        // Añadimos ZonaCarga y Sistema para que salgan en MDA y MTR
+        const orden = ["Año", "Mes", "Día", "Tarifa", "Division", "ZonaReserva", "ZonaCarga", "Zona", "Sistema", "Concepto"];
         
         orden.forEach(nombre => {
             if (filtros[nombre] && filtros[nombre].length > 0) {
@@ -57,21 +58,26 @@ function actualizarDashboard(data) {
     verificarPlotly();
     if(!data || data.length === 0) return alert("No hay datos para esta selección");
     
-    // Las columnas que son texto o fechas y NO deben sumarse
-    const colsIgnorar = ['Año', 'Mes', 'Día', 'Hora', 'HoraOperacion', 'Fecha', 'FechaOperacion', 'Tarifa', 'Division', 'Concepto', 'Zona', 'Sistema', 'ZonaReserva', 'ZonaCarga'];
+    // Columnas que NO se deben sumar
+    const colsIgnorar = ['AÑO', 'MES', 'DÍA', 'HORA', 'HORAOPERACION', 'FECHA', 'FECHAOPERACION', 'TARIFA', 'DIVISION', 'CONCEPTO', 'ZONA', 'SISTEMA', 'ZONARESERVA', 'ZONACARGA', 'ESTADO'];
     
-    // Función inteligente para calcular el valor real de la fila
+    // Función inteligente a prueba de balas para sacar el dinero/precio
     const getVal = (d) => {
-        // Si el archivo ya trae un Precio o Total definido (como en MDA/MTR), úsalo
-        if (d['Total'] !== undefined && d['Total'] !== 0) return parseFloat(d['Total']);
-        if (d['Precio'] !== undefined && d['Precio'] !== 0) return parseFloat(d['Precio']);
-        if (d['PML'] !== undefined && d['PML'] !== 0) return parseFloat(d['PML']);
+        const nombresPrecio = ['Total', 'Precio', 'PML', 'Precio Marginal Local'];
         
-        // Si no (como en Tarifas CFE), suma todos los componentes
+        // 1. Busca si existe una columna que se llame Precio o PML
+        for (let nombre of nombresPrecio) {
+            let colExacta = Object.keys(d).find(k => k.toUpperCase() === nombre.toUpperCase());
+            if (colExacta && !isNaN(parseFloat(d[colExacta]))) {
+                return parseFloat(d[colExacta]);
+            }
+        }
+        
+        // 2. Si no hay, suma los componentes (para Tarifas)
         let sumaFila = 0;
         for (let key in d) {
-            if (!colsIgnorar.includes(key) && typeof d[key] === 'number') {
-                sumaFila += d[key];
+            if (!colsIgnorar.includes(key.toUpperCase()) && !isNaN(parseFloat(d[key]))) {
+                sumaFila += parseFloat(d[key]);
             }
         }
         return sumaFila;
@@ -86,8 +92,15 @@ function actualizarDashboard(data) {
     
     const traces = {};
     data.forEach(d => {
-        const label = d.Concepto || d.ZonaReserva || d.Sistema || d.Tarifa || 'General';
-        const fechaVal = d.Fecha || d.FechaOperacion || 'Punto';
+        // Etiqueta para separar líneas (ej. Diferentes Nodos o Zonas de Carga en MDA)
+        const label = d.ZonaCarga || d.ZonaReserva || d.Zona || d.Sistema || d.Concepto || d.Tarifa || 'General';
+        
+        // Reparación del tiempo: Unir Fecha y Hora para graficar los 24 puntos sin que se encimen
+        let fechaPura = d.Fecha || d.FechaOperacion || 'Punto';
+        fechaPura = String(fechaPura).split(' ')[0]; // Nos quedamos solo con YYYY-MM-DD
+        
+        let hora = d.Hora || d.HoraOperacion;
+        let fechaVal = hora !== undefined ? `${fechaPura} ${String(hora).padStart(2, '0')}:00` : fechaPura;
         
         if(!traces[label]) traces[label] = {x:[], y:[], name: label, type: data.length < 10 ? 'bar' : 'scatter', mode: 'lines+markers'};
         traces[label].x.push(fechaVal);
