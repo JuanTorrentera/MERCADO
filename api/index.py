@@ -4,21 +4,16 @@ import pandas as pd
 import os
 
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Nombres exactos como los tienes en tu carpeta
 ARCHIVOS = {
     "tarifas": "tarifas.xlsx",
     "reservas": "reservas.xlsx",
-    "mda": "MDA-MTR.xlsx", 
-    "mtr": "MDA-MTR.xlsx"
+    "mda": "mda-mtr.xlsx", 
+    "mtr": "mda-mtr.xlsx"
 }
 
 def cargar_excel(modulo: str):
@@ -30,21 +25,13 @@ def cargar_excel(modulo: str):
         df = pd.read_excel(ruta, sheet_name=sheet)
         df.columns = df.columns.str.strip()
         
-        # Procesar Fechas
         col_fecha = next((c for c in df.columns if str(c).upper() in ['FECHA', 'FECHAOPERACION']), None)
         if col_fecha:
             df[col_fecha] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
             df['Año'] = df[col_fecha].dt.year.fillna(0).astype(int)
             df['Mes'] = df[col_fecha].dt.month.fillna(0).astype(int)
             df['Día'] = df[col_fecha].dt.day.fillna(0).astype(int)
-            df = df[df['Año'] != 0]
         
-        # Forzar que los valores sean numéricos
-        cols_valor = ['Total', 'Precio', 'Energía', 'Potencia', 'Usuarios']
-        for cv in cols_valor:
-            if cv in df.columns:
-                df[cv] = pd.to_numeric(df[cv], errors='coerce').fillna(0)
-
         renames = {'DIVISION': 'Division', 'TARIFA': 'Tarifa', 'CONCEPTO': 'Concepto', 
                    'ZONARESERVA': 'ZonaReserva', 'ZONACARGA': 'ZonaCarga', 'HORA': 'HoraOperacion'}
         df = df.rename(columns={k: v for k, v in renames.items() if k in df.columns})
@@ -60,9 +47,12 @@ def get_filtros(modulo: str):
     filtros = {}
     for c in df.columns:
         if c in cols_interes:
-            # Ordenar numéricamente para Día, Mes, Año
-            valores = sorted(df[c].dropna().unique())
-            filtros[c] = [str(int(v)) if isinstance(v, float) else str(v) for v in valores]
+            valores = [v for v in df[c].dropna().unique() if str(v).strip() != '0']
+            try:
+                valores = sorted(valores, key=lambda x: float(x))
+            except:
+                valores = sorted(valores)
+            filtros[c] = [str(int(v)) if isinstance(v, float) and v.is_integer() else str(v) for v in valores]
                 
     return filtros
 
@@ -72,14 +62,17 @@ def get_datos(request: Request):
     mod = p.pop("modulo", None)
     df = cargar_excel(mod)
     if df is None: return []
-    for col, val in p.items():
-        if col in df.columns and val:
-            # Comparación robusta
-            df = df[df[col].astype(str).str.replace('.0', '', regex=False) == str(val)]
     
-    # Ordenar por fecha para que la gráfica no se cruce
+    for col, val in p.items():
+        if col in df.columns and val and val != "Todos":
+            # Filtro robusto que no falla con los tipos de datos
+            df_col_str = df[col].astype(str).str.replace('.0', '', regex=False).str.strip().str.upper()
+            val_str = str(val).replace('.0', '').strip().upper()
+            df = df[df_col_str == val_str]
+    
     col_fecha = next((c for c in df.columns if str(c).upper() in ['FECHA', 'FECHAOPERACION']), None)
     if col_fecha:
         df = df.sort_values(by=col_fecha)
+        df[col_fecha] = df[col_fecha].astype(str) # Evita crasheos en Vercel
         
-    return df.to_dict(orient="records")
+    return df.fillna(0).to_dict(orient="records")
