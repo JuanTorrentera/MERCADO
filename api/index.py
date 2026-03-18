@@ -17,8 +17,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARCHIVOS = {
     "tarifas": "tarifas.xlsx",
     "reservas": "reservas.xlsx",
-    "mda": "mda-mtr.xlsx", 
-    "mtr": "mda-mtr.xlsx"
+    "mda": "MDA-MTR.xlsx", 
+    "mtr": "MDA-MTR.xlsx"
 }
 
 def cargar_excel(modulo: str):
@@ -49,8 +49,18 @@ def get_filtros(modulo: str):
     df = cargar_excel(modulo)
     if df is None: raise HTTPException(status_code=404)
     cols = ["Año", "Tarifa", "Division", "Concepto", "Zona", "Sistema", "ZonaReserva", "ZonaCarga", "Mes", "Día"]
-    return {c: sorted([v.replace('.0','') for v in df[c].dropna().astype(str).unique()]) 
-            for c in df.columns if c in cols}
+    
+    filtros = {}
+    for c in df.columns:
+        if c in cols:
+            valores = df[c].dropna().astype(str).unique()
+            # Ordenamiento especial para Día y Mes (numérico)
+            if c in ['Día', 'Mes', 'Año']:
+                filtros[c] = sorted(valores, key=lambda x: int(float(x)))
+            else:
+                filtros[c] = sorted(valores)
+                
+    return filtros
 
 @app.get("/api/datos")
 def get_datos(request: Request):
