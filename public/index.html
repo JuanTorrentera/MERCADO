@@ -19,8 +19,7 @@
 
     <main>
         <h2 id="modulo-titulo">Tarifas CFE</h2>
-        <div id="filtros-container" class="filtros-grid">
-            </div>
+        <div id="filtros-container" class="filtros-grid"></div>
         <button class="btn-ejecutar" onclick="ejecutar()">EJECUTAR ANÁLISIS</button>
 
         <div class="stats-grid">
@@ -30,11 +29,15 @@
             <div class="stat-card"><h3>REGISTROS</h3><p id="stat-registros">-</p></div>
         </div>
 
-        <div id="grafica-total" class="chart-container" style="margin-bottom: 20px;">
-            <p style="text-align:center; padding-top:100px; color: #94a3b8;">Selecciona filtros y ejecuta para ver el Resumen...</p>
-        </div>
+        <div id="grafica-total" class="chart-container" style="margin-bottom: 20px; display: none;"></div>
+        <div id="grafica-componentes" class="chart-container" style="margin-bottom: 20px; display: none;"></div>
         
-        <div id="grafica-componentes" class="chart-container" style="display: none;"></div>
+        <div id="grafica-energia" class="chart-container" style="margin-bottom: 20px; display: none;"></div>
+        <div id="grafica-potencia" class="chart-container" style="margin-bottom: 20px; display: none;"></div>
+        <div id="grafica-usuarios" class="chart-container" style="margin-bottom: 20px; display: none;"></div>
+
+        <div id="grafica-estadistica" class="chart-container" style="margin-bottom: 20px; display: none;"></div>
+
     </main>
     <script src="/js/main.js"></script>
 </body>
