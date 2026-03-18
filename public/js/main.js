@@ -14,7 +14,6 @@ async function cambiarModulo(mod) {
     event.target.classList.add('active');
     document.getElementById('modulo-titulo').innerText = event.target.innerText;
     
-    // Limpiar gráficas al cambiar de pestaña
     ['grafica-total', 'grafica-componentes', 'grafica-energia', 'grafica-potencia', 'grafica-usuarios', 'grafica-estadistica'].forEach(id => {
         document.getElementById(id).style.display = 'none';
     });
@@ -29,16 +28,12 @@ async function cargarFiltros() {
         const container = document.getElementById('filtros-container');
         container.innerHTML = '';
         
-        // --- MAGIA DE FILTROS PERSONALIZADOS ---
         let orden = [];
         if (moduloActual === 'tarifas') {
-            // Tarifas: Solo Año, Tarifa y División (Ni mes ni día)
             orden = ["Año", "Tarifa", "Division"];
         } else if (moduloActual === 'reservas') {
-            // Reservas: Año, Mes, ZonaReserva (Sin día)
             orden = ["Año", "Mes", "ZonaReserva"];
         } else {
-            // MDA / MTR: Año, Mes, ZonaCarga (Sin día)
             orden = ["Año", "Mes", "ZonaCarga", "Zona", "Sistema"];
         }
         
@@ -46,9 +41,9 @@ async function cargarFiltros() {
             if (filtros[nombre] && filtros[nombre].length > 0) {
                 const div = document.createElement('div');
                 
-                // Hacer obligatorios los filtros clave para evitar errores
+                // MAGIA AQUÍ: Le quitamos "Año" a las condiciones obligatorias de Tarifas
                 let esObligatorio = false;
-                if (moduloActual === 'tarifas' && (nombre === 'Año' || nombre === 'Tarifa' || nombre === 'Division')) esObligatorio = true;
+                if (moduloActual === 'tarifas' && (nombre === 'Tarifa' || nombre === 'Division')) esObligatorio = true;
                 if (moduloActual !== 'tarifas' && (nombre === 'Año' || nombre === 'Mes' || nombre === 'ZonaCarga' || nombre === 'ZonaReserva')) esObligatorio = true;
 
                 if (esObligatorio) {
@@ -69,7 +64,6 @@ async function cargarFiltros() {
 }
 
 async function ejecutar() {
-    // Validar que el usuario llenó lo obligatorio (*)
     let faltan = false;
     document.querySelectorAll('#filtros-container select[required]').forEach(s => {
         if(!s.value) faltan = true;
@@ -97,12 +91,10 @@ function actualizarDashboard(data) {
     verificarPlotly();
     if(!data || data.length === 0) return alert("No se encontraron registros para esta combinación.");
 
-    // Ocultar todas las gráficas antes de dibujar
     ['grafica-total', 'grafica-componentes', 'grafica-energia', 'grafica-potencia', 'grafica-usuarios', 'grafica-estadistica'].forEach(id => {
         document.getElementById(id).style.display = 'none';
     });
 
-    // Ordenar cronológicamente (Muy importante para que las líneas no se enreden)
     data.sort((a, b) => {
         let fA = (a.Fecha || a.FechaOperacion || '').split(' ')[0];
         let fB = (b.Fecha || b.FechaOperacion || '').split(' ')[0];
@@ -128,8 +120,6 @@ function actualizarDashboard(data) {
     const layoutBase = { paper_bgcolor: '#1e293b', plot_bgcolor: '#1e293b', font: {color: '#fff'}, margin: {t:40, r:30, l:50, b:80}, xaxis: { gridcolor: '#334155', tickangle: -45 }, yaxis: { title: 'Valor ($)', gridcolor: '#334155' }};
 
     if (moduloActual === 'tarifas') {
-        // --- TARIFAS CFE ---
-        // Al no tener meses, sacamos las estadísticas de la suma anual y gráficas por concepto
         const totales = data.map(getValTotal);
         document.getElementById('stat-promedio').innerText = (totales.reduce((a,b)=>a+b,0)/totales.length).toFixed(2);
         document.getElementById('stat-maximo').innerText = Math.max(...totales).toFixed(2);
@@ -137,24 +127,21 @@ function actualizarDashboard(data) {
         document.getElementById('stat-registros').innerText = data.length;
 
         ['Energía', 'Potencia', 'Usuarios'].forEach(concepto => {
-            // Tolerancia a mayúsculas y acentos
             let dataConcepto = data.filter(d => d.Concepto && d.Concepto.toUpperCase().replace('Í','I') === concepto.toUpperCase().replace('Í','I'));
             if (dataConcepto.length > 0) {
                 let x = dataConcepto.map(d => (d.Fecha || d.FechaOperacion || '').split(' ')[0]);
                 let y = dataConcepto.map(getValTotal);
                 let divId = `grafica-${concepto.toLowerCase().replace('í','i')}`;
                 
-                // Colores para cada concepto
                 let colorLinea = concepto === 'Energía' ? '#00d4ff' : (concepto === 'Potencia' ? '#f97316' : '#22c55e');
                 
                 document.getElementById(divId).style.display = 'block';
                 Plotly.newPlot(divId, [{ x: x, y: y, name: concepto, type: 'scatter', mode: 'lines+markers', line: {width: 3, color: colorLinea} }], 
-                {...layoutBase, title: {text: `Evolución Mensual: ${concepto}`, font: {color: colorLinea}}});
+                {...layoutBase, title: {text: `Evolución Histórica: ${concepto}`, font: {color: colorLinea}}});
             }
         });
 
     } else {
-        // --- RESERVAS, MDA Y MTR ---
         const totales = data.map(getValTotal);
         document.getElementById('stat-promedio').innerText = (totales.reduce((a,b)=>a+b,0) / totales.length).toFixed(2);
         document.getElementById('stat-maximo').innerText = Math.max(...totales).toFixed(2);
@@ -170,11 +157,9 @@ function actualizarDashboard(data) {
         document.getElementById('grafica-componentes').style.display = 'block';
         document.getElementById('grafica-estadistica').style.display = 'block';
 
-        // 1. Gráfica de Líneas: Evolución Horaria
         let tracesComp = colsComponentes.map(col => ({ x: xValues, y: data.map(d => d[col] || 0), name: col, type: 'scatter', mode: 'lines', line: {width: 2} }));
         Plotly.newPlot('grafica-componentes', tracesComp, {...layoutBase, title: {text: 'Desglose Horario de Componentes', font: {color: '#fff'}}});
 
-        // 2. Gráfica de Boxplot: Análisis Estadístico de Riesgo
         let horas = data.map(d => String(d.Hora || d.HoraOperacion || '0').padStart(2, '0') + ':00');
         Plotly.newPlot('grafica-estadistica', [{ x: horas, y: totales, type: 'box', name: 'Distribución', marker: {color: '#eab308'} }], 
         {...layoutBase, title: {text: 'Perfil Estadístico de Volatilidad Horaria (Análisis de Mercado)', font: {color: '#eab308'}}, xaxis: {title: 'Hora del Día', dtick: 1}});
